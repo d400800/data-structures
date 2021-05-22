@@ -1,124 +1,159 @@
 class BinaryTree {
     constructor() {
-        this.nodes = [];
+        this.size = 0;
         this.root = null;
     }
 
-    getInitialResult() {
-        return {
-            path: '',
-            visited: new Map()
-        };
+    add(value) {
+        const node = new Node(value);
+        this.insertNode(node);
     }
 
-    add(values) {
+    addMany(values) {
         for (const value of values) {
-            const node = new Node(value);
-
-            if (this.nodes.length === 0) {
-                this.nodes = [...this.nodes, node];
-                this.root = node;
-
-                continue;
-            }
-
-            this.nodes = [...this.nodes, node];
-            this.insertNode(node, this.root);
+            this.add(value);
         }
     }
 
-    insertNode(insertedNode, existingNode) {
-        if (insertedNode.value > existingNode.value) {
-            if (existingNode.rightChild) {
-                this.insertNode(insertedNode, existingNode.rightChild);
+    find(element) {
+        let nodeValue = element instanceof Node ? element.value : element;
+
+        if (!nodeValue) return false;
+
+        let current = this.root;
+
+        while (current.value !== nodeValue) {
+            if (nodeValue < current.value) {
+                current = current.leftChild;
+            } else if (nodeValue > current.value) {
+                current = current.rightChild
+            }
+
+            if (current === undefined) {
+                return false; // if we traversed and there was no such child, failure
+            }
+        }
+
+        return true; // we only reach here if current == element, which means we found element
+    }
+
+    visitNode(node, fn) {
+        fn(node);
+    }
+
+    insertNode(element) {
+        if (this.size === 0) {
+            this.root = element;
+            this.size = this.size + 1;
+            return true;
+        }
+
+        let current = this.root;
+
+        while (current.value !== element.value) {
+            if (element.value < current.value) {
+                if (current.leftChild === undefined) {
+                    current.leftChild = element;
+
+                    element.parent = current;
+
+                    this.size = this.size + 1;
+
+                    return true;
+                } else {
+                    current = current.leftChild;
+                }
+            } else if (element.value > current.value) {
+                if (current.rightChild === undefined) {
+                    current.rightChild = element;
+
+                    element.parent = current;
+
+                    this.size = this.size + 1;
+
+                    return true;
+                } else {
+                    current = current.rightChild;
+                }
+            }
+        }
+
+        return false; // we only reach here if current == element, and we can't have duplicate elements
+    }
+
+    // Visit-Left-Right
+    preOrder(onNodeVisit) {
+        let current = this.root;
+        const visitedNodes = new Map();
+
+        while (current !== undefined) {
+            if (!visitedNodes.get(current.value)) {
+                this.visitNode(current, onNodeVisit);
+                visitedNodes.set(current.value, true);
+            }
+
+            if (current.leftChild && !visitedNodes.get(current.leftChild.value)) {
+                current = current.leftChild;
+            } else if (current.rightChild && !visitedNodes.get(current.rightChild.value)) {
+                current = current.rightChild;
             } else {
-                existingNode.rightChild = insertedNode;
-                insertedNode.parent = existingNode;
+                current = current.parent;
             }
-        } else {
-            if (existingNode.leftChild) {
-                this.insertNode(insertedNode, existingNode.leftChild);
+        }
+
+        return true;
+    }
+
+    // Left-Visit-Right
+    inOrder(onNodeVisit) {
+        let current = this.root;
+        const visitedNodes = new Map();
+
+        while (current !== undefined) {
+            if (current.leftChild && !visitedNodes.get(current.leftChild.value)) {
+                current = current.leftChild;
+
+            } else if (!visitedNodes.get(current.value)) {
+                this.visitNode(current, onNodeVisit);
+                visitedNodes.set(current.value, true);
+
+            } else if (current.rightChild && !visitedNodes.get(current.rightChild.value)) {
+                current = current.rightChild;
+
             } else {
-                existingNode.leftChild = insertedNode;
-                insertedNode.parent = existingNode;
+                current = current.parent;
             }
         }
+
+        return true;
     }
 
-    // Visit-Left-Right: 5 -> 4 -> 2 -> 1 -> 3 -> 7 -> 6 -> 8 -> 9
-    traversePreOrder(node, result) {
-        if (!result) {
-            result = this.getInitialResult();
+    // Left-Right-Visit
+    postOrder(onNodeVisit) {
+        let current = this.root;
+        const visitedNodes = new Map();
+
+        while (current !== undefined) {
+            if (current.leftChild && !visitedNodes.get(current.leftChild.value)) {
+                current = current.leftChild;
+
+            } else if (current.rightChild && !visitedNodes.get(current.rightChild.value)) {
+                current = current.rightChild;
+
+            } else if (!visitedNodes.get(current.value)) {
+                this.visitNode(current, onNodeVisit);
+                visitedNodes.set(current.value, true);
+
+            } else {
+                current = current.parent;
+            }
         }
 
-        this.visitNode(node, result);
-
-        node.leftChild && this.traversePreOrder(node.leftChild, result);
-        node.rightChild && this.traversePreOrder(node.rightChild, result);
-
-        if (result.visited.size === this.nodes.length) {
-            return result;
-        }
-    }
-
-    // Left-Visit-Right: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
-    traverseInOrder(node, result) {
-        if (!result) {
-            result = this.getInitialResult();
-        }
-
-        if (node.leftChild && result.visited.get(node.leftChild.value) === undefined) {
-            this.traverseInOrder(node.leftChild, result);
-        }
-
-        if (result.visited.get(node.value) === undefined) {
-            this.visitNode(node, result);
-        }
-
-        if (node.rightChild && result.visited.get(node.rightChild.value) === undefined) {
-            this.traverseInOrder(node.rightChild, result);
-        }
-
-        if (result.visited.size === this.nodes.length) {
-            return result;
-        }
-
-        this.traverseInOrder(node.parent, result);
-    }
-
-    // Left-Right-Visit: 1 -> 3 -> 2 -> 4 -> 6 -> 9 -> 8 -> 7 -> 5
-    traversePostOrder(node, result) {
-        if (!result) {
-            result = this.getInitialResult();
-        }
-
-        if (node.leftChild && result.visited.get(node.leftChild.value) === undefined) {
-            this.traversePostOrder(node.leftChild, result);
-        }
-
-        if (node.rightChild && result.visited.get(node.rightChild.value) === undefined) {
-            this.traversePostOrder(node.rightChild, result);
-        }
-
-        if (result.visited.get(node.value) === undefined) {
-            this.visitNode(node, result);
-        }
-
-        if (result.visited.size === this.nodes.length) {
-            return result;
-        }
-
-        this.traversePostOrder(node.parent, result);
+        return true;
     }
 
     traverseLevelOrder(node, result) {
 
-    }
-
-    visitNode(node, result) {
-        result.visited.set(node.value, true);
-
-        result.path = result.path === '' ? `${node.value}` : result.path + ` -> ${node.value}`;
     }
 }
 
@@ -131,15 +166,7 @@ class Node {
     }
 }
 
-const binaryTree = new BinaryTree();
-
-binaryTree.add([5,4,2,3,1,7,8,6,9]);
-
-const preOrderTraversal = binaryTree.traversePreOrder(binaryTree.root);
-console.log('preOrderTraversal', preOrderTraversal);
-
-const inOrderTraversal = binaryTree.traverseInOrder(binaryTree.root);
-console.log('inOrderTraversal', inOrderTraversal);
-
-const postOrderTraversal = binaryTree.traversePostOrder(binaryTree.root);
-console.log('postOrderTraversal', postOrderTraversal);
+module.exports = {
+    BinaryTree,
+    Node
+}
